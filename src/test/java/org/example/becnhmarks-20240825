@@ -1,0 +1,7 @@
+Benchmark                      (numOrders)  Mode  Cnt   Score     Error  Units
+ObBenchmark.testCancelOrder            100  avgt    5  23.346 ±  43.129  ns/op
+ObBenchmark.testCancelOrder           1000  avgt    5  65.958 ± 108.064  ns/op
+ObBenchmark.testNewOrderBid            100  avgt    5  40.628 ±  59.176  ns/op
+ObBenchmark.testNewOrderBid           1000  avgt    5  82.872 ± 116.855  ns/op
+ObBenchmark.testNewOrderOffer          100  avgt    5  44.637 ±  71.851  ns/op
+ObBenchmark.testNewOrderOffer         1000  avgt    5  88.861 ± 121.188  ns/op
