@@ -8,6 +8,6 @@ Array based - contiguous in memory
 Improvements:
 
 * Make non allocating. Use a Mutable level object and Mutable orders
-* this can be zero GC but demonstrates the algorithm,s
+* this can be zero GC but demonstrates the algorithms required to build an order book in array based fashion
 
 
