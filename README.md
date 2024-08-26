@@ -61,6 +61,45 @@ The price-time priority matching algorithm is a method used in financial markets
 
 This algorithm ensures that the most competitive orders are matched first while maintaining fairness by honoring the sequence of order submissions.
 
+#### Market Order Scenario 
+
+Definition: A market order is an instruction to buy or sell immediately at the best available current price. Market order will fill at the best available prices in the order book, potentially consuming multiple price levels until the entire quantity is matched.
+If you place a market buy order for 2 million units:
+
+* 1 million units might be filled at $50.
+* 500,000 units at $51.
+* 500,000 units at $52.
+
+The buyer ends up paying an average price that may be higher than the initial lowest price because the order consumes all available liquidity across multiple price levels.
+
+#### Limit Order Scenarios
+
+Definition: A limit order specifies the maximum price a buyer is willing to pay (or the minimum price a seller is willing to accept).
+Price Cap: The order will only be executed at the specified price or better (lower for buy orders, higher for sell orders).
+
+#### Scenario Setup
+- **Buy Limit Order**: 2 million units at $52 (maximum price)
+- **Sell Orders in the Book**:
+    - 1 million units at $50
+    - 500,000 units at $51
+    - 1 million units at $52
+
+##### Matching Process
+1. **First Match**:
+    - 1 million units at $50
+    - **Remaining Order**: 1 million units at $52
+
+2. **Second Match**:
+    - 500,000 units at $51
+    - **Remaining Order**: 500,000 units at $52
+
+3. **Final Match**:
+    - 500,000 units at $52
+    - **Remaining Order**: None (order fully filled)
+
+- **Total Cost**: $101.5 million
+- **Average Price Paid**: $50.75 per unit
+
 ### Improvements and TODOS:
 
 Overall this is a basic implementation to demonstrate the algorithms
