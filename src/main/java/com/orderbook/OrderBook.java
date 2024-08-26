@@ -3,10 +3,13 @@ package com.orderbook;
 import org.agrona.collections.*;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 
-
+/**
+ * Add at level O(1)
+ * Add new level N log (N)
+ * Cancel O(1)
+ */
 public class OrderBook {
     private static final int MAX_LEVELS = 1_000;
     private static final int MISSING_VAL = -1;
