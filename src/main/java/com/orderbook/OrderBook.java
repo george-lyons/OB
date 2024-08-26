@@ -10,7 +10,7 @@ import java.util.List;
  * Add new level N log (N)
  * Cancel O(1)
  */
-public class OrderBook {
+public final class OrderBook {
     private static final int MAX_LEVELS = 1_000;
     private static final int MISSING_VAL = -1;
     private final int MAX_PRICE_ARRAY = 1_000;
@@ -43,6 +43,23 @@ public class OrderBook {
         } else {
             newOffer(order);
         }
+    }
+
+    public void cancelOrder(Order order) {
+        assert order.price > 0 && order.price <= MAX_PRICE_ARRAY : "Price out of bounds: " + order.price;
+        //lookup O(1) and remove
+        //lookup level, remove from level
+        //if level empty remove, need to lookup index and shift array
+        if(order.isBid) {
+            cancelBid(order);
+        } else {
+            cancelOffer(order);
+        }
+    }
+
+    public void replaceOrder(Order order) {
+        cancelOrder(order);
+        newOrder(order);
     }
 
     private void newBid(Order order) {
@@ -137,18 +154,6 @@ public class OrderBook {
         levels[length - 1] = null;
     }
 
-    public void cancelOrder(Order order) {
-        assert order.price > 0 && order.price <= MAX_PRICE_ARRAY : "Price out of bounds: " + order.price;
-        //lookup O(1) and remove
-        //lookup level, remove from level
-        //if level empty remove, need to lookup index and shift array
-        if(order.isBid) {
-            cancelBid(order);
-        } else {
-            cancelOffer(order);
-        }
-    }
-
     private void cancelOffer(Order order) {
         PriceLevel level = priceToOffers.get((int)order.price);
         if(level != null) {
@@ -176,13 +181,8 @@ public class OrderBook {
         }
     }
 
-    public void replaceOrder(Order order) {
-        cancelOrder(order);
-        newOrder(order);
-    }
 
-
-    public static class PriceLevel {
+    static class PriceLevel {
         long price;
         long totalNotional;
 
@@ -216,7 +216,7 @@ public class OrderBook {
         }
     }
 
-    public static class Order {
+    static class Order {
         long orderId;
         long price;
         long quantity;
