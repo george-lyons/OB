@@ -1,9 +1,16 @@
-# Order book implementation - java 
-- array based structure and insertion point binary search for a new level
-Array based - contiguous in memory
+## Order book implementation - java
 
-- An array-based order book in Java is beneficial for low-latency applications, such as high-frequency trading, due to the following key reasons:
+Array based - contiguous in memory. Insertion point binary search
 
+* Add at level O(1)
+* Add new level N log (N)
+* Cancel O(1)
+
+Improvements:
+
+* Make non allocating. Use a Mutable level object and Mutable orders
+* this can be zero GC but demonstrates the algorithms required to build an order book in array based fashion
+  =======
 1. Cache Efficiency:
 
    •	Contiguous Memory Layout: Arrays in Java are stored in contiguous blocks of memory, which means that accessing sequential elements is highly cache-friendly. This leads to fewer cache misses and faster data retrieval, which is crucial for low-latency operations.
@@ -33,23 +40,13 @@ Alternatives to Improve Time Complexity:
 
 To achieve better time complexities than O(n) for insertion and deletion operations, you would need to consider alternative data structures:
 
-	•	Skip Lists: Offers O(log n) for both insertion and deletion, while maintaining order.
-	•	Balanced Trees (e.g., AVL Tree, Red-Black Tree): Also provides O(log n) for insertion, deletion, and lookup, maintaining a sorted structure without the need for shifting elements.
-	•	Hash Maps Combined with Linked Lists: Can provide O(1) insertion and deletion but might require additional management to maintain order.
+* Skip Lists: Offers O(log n) for both insertion and deletion, while maintaining order.
+* Balanced Trees (e.g., AVL Tree, Red-Black Tree): Also provides O(log n) for insertion, deletion, and lookup, maintaining a sorted structure without the need for shifting elements.
+* Hash Maps Combined with Linked Lists: Can provide O(1) insertion and deletion but might require additional management to maintain order.
 
 However, these alternatives trade off some of the cache locality and simplicity that arrays offer. For a system where low-latency and predictable access times are paramount, the simplicity and cache-friendliness of an array might still be preferable, despite the O(n) worst-case scenarios.
 
-### Improvements and Todos:
-
-Overall this is a basic implementation to demonstrate the algorithms
-
-* Make non allocating. Use a Mutable level object and Mutable orders
-* this can be zero GC but demonstrates the algorithms required to build an order book in array based fashion
-* Exception handling around edge cases
-* More tests to cover order book changes
-* Improved benchmarks
-
-### Price-Time Priority Matching Algorithm - TO DO
+### Price-Time Priority Matching Algorithm - NOT YET IMPLEMENTED
 
 The price-time priority matching algorithm is a method used in financial markets to efficiently match buy and sell orders in an order book. The process works as follows:
 
@@ -74,7 +71,13 @@ The price-time priority matching algorithm is a method used in financial markets
 This algorithm ensures that the most competitive orders are matched first while maintaining fairness by honoring the sequence of order submissions.
 
 
+### Improvements and TODOS:
 
+Overall this is a basic implementation to demonstrate the algorithms
 
-
+* Make non allocating. Use a Mutable level object and Mutable orders
+* this can be zero GC but demonstrates the algorithms required to build an order book in array based fashion
+* Exception handling around edge cases
+* More tests to cover order book changes
+* Improved benchmarks
 
