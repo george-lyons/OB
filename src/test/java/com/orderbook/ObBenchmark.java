@@ -5,8 +5,8 @@ import org.openjdk.jmh.annotations.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-@BenchmarkMode(Mode.AverageTime)
-@OutputTimeUnit(TimeUnit.NANOSECONDS)
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
 @Warmup(iterations = 3, time = 1)
 @Measurement(iterations = 5, time = 1)
 @State(Scope.Thread)
@@ -19,7 +19,7 @@ public class ObBenchmark {
 
     private OrderBook.Order cancelOrder;
 
-    @Param({ "100", "1000"})
+    @Param({ "100", "500"})
     private int numOrders;
 
     @Setup(Level.Invocation)

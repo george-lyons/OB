@@ -3,13 +3,14 @@ package com.orderbook;
 import org.agrona.collections.*;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 
 public class OrderBook {
-    private static final int MAX_LEVELS = 20000;
+    private static final int MAX_LEVELS = 1_000;
     private static final int MISSING_VAL = -1;
-    private final int MAX_PRICE_ARRAY = 10_000;
+    private final int MAX_PRICE_ARRAY = 1_000;
 
     private final List<PriceLevel> priceToBids = new ArrayList<>(MAX_PRICE_ARRAY);
     private final List<PriceLevel> priceToOffers  = new ArrayList<>(MAX_PRICE_ARRAY);
@@ -178,14 +179,12 @@ public class OrderBook {
     }
 
 
-    private static class PriceLevel {
+    public static class PriceLevel {
         long price;
         long totalNotional;
 
         private final Long2ObjectHashMap<Order> idToOrder = new Long2ObjectHashMap();
-
-        //todo consider the complexity to remove, should jnot be deep
-//        private final LongArrayList idOrdering = new LongArrayList();
+        private final LongArrayList idOrdering = new LongArrayList();
 
         private PriceLevel(long price) {
             this.price = price;
@@ -193,7 +192,7 @@ public class OrderBook {
 
         void addOrder(Order order) {
             assert order.price == price : "Price Must match";
-//            idOrdering.add(order.orderId);
+            idOrdering.add(order.orderId);
             idToOrder.put(order.orderId, order);
             totalNotional += order.quantity;
         }
@@ -203,7 +202,8 @@ public class OrderBook {
             if(order == null) {
                 return false;
             }
-//            idOrdering.removeIf( (i) -> i == orderId);
+            //TODO this loops through, but only for orders at level, need to maintain order here
+            idOrdering.removeIf((i) -> i == orderId);
             totalNotional -= order.quantity;
             return true;
         }

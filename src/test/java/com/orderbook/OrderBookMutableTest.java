@@ -10,7 +10,11 @@ class OrderBookMutableTest {
     private OrderBookMutable orderBookNonMutable;
 
     private OrderBookMutable.Order mutableNewOrder(long id, long price, long notiona, boolean isBouy) {
-        final OrderBookMutable.Order order = new OrderBookMutable.Order(id, price, notiona, isBouy);
+        final OrderBookMutable.Order order = new OrderBookMutable.Order();
+        order.setOrderId(id);
+        order.setPrice(price);
+        order.setQuantity(notiona);
+        order.setBid(isBouy);
         return order;
     }
 

@@ -4,15 +4,16 @@ import com.pool.FixedObjectPool;
 import com.pool.Mutable;
 import org.agrona.collections.IntArrayList;
 import org.agrona.collections.Long2ObjectHashMap;
+import org.agrona.collections.LongArrayList;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
 public class OrderBookMutable {
-    private static final int MAX_LEVELS = 20000;
+    private static final int MAX_LEVELS = 1_000;
     private static final int MISSING_VAL = -1;
-    private final int MAX_PRICE_ARRAY = 10_000;
+    private final int MAX_PRICE_ARRAY = 1_000;
 
     private final List<MutablePriceLevel> priceToBids = new ArrayList<>(MAX_PRICE_ARRAY);
     private final List<MutablePriceLevel> priceToOffers  = new ArrayList<>(MAX_PRICE_ARRAY);
@@ -34,7 +35,7 @@ public class OrderBookMutable {
             priceToIndexBids.add(MISSING_VAL);
             priceToIndexOffers.add(MISSING_VAL);
         }
-        this.fixedObjectPool = new FixedObjectPool<>(MAX_LEVELS * 2, MutablePriceLevel::new, MutablePriceLevel.class);
+        this.fixedObjectPool = new FixedObjectPool<>(MAX_LEVELS, MutablePriceLevel::new, MutablePriceLevel.class);
     }
 
     public void newOrder(Order order) {
@@ -192,15 +193,13 @@ public class OrderBookMutable {
     private static class MutablePriceLevel  implements Mutable {
         private long price;
         private long totalNotional;
+        private final LongArrayList idOrdering = new LongArrayList();
 
         private final Long2ObjectHashMap<OrderBookMutable.Order> idToOrder = new Long2ObjectHashMap();
 
-        //todo consider the complexity to remove, should jnot be deep
-//        private final LongArrayList idOrdering = new LongArrayList();
-
         public void addOrder(OrderBookMutable.Order order) {
             assert order.price == price : "Price Must match";
-//            idOrdering.add(order.orderId);
+            idOrdering.add(order.orderId);
             idToOrder.put(order.orderId, order);
             totalNotional += order.quantity;
         }
@@ -210,7 +209,8 @@ public class OrderBookMutable {
             if(order == null) {
                 return false;
             }
-//            idOrdering.removeIf( (i) -> i == orderId);
+            //TODO this loops through, but only for orders at level, need to maintain order here
+            idOrdering.removeIf((i) -> i == orderId);
             totalNotional -= order.quantity;
             return true;
         }
@@ -237,17 +237,50 @@ public class OrderBookMutable {
             idToOrder.clear();
         }
     }
-    public static class Order {
+    public static class Order  implements Mutable{
         public long orderId;
         public long price;
         public long quantity;
         public boolean isBid;
 
-        Order(long orderId, long price, long quantity, boolean idBid) {
+        public long getOrderId() {
+            return orderId;
+        }
+
+        public void setOrderId(long orderId) {
             this.orderId = orderId;
+        }
+
+        public long getPrice() {
+            return price;
+        }
+
+        public void setPrice(long price) {
             this.price = price;
+        }
+
+        public long getQuantity() {
+            return quantity;
+        }
+
+        public void setQuantity(long quantity) {
             this.quantity = quantity;
-            this.isBid = idBid;
+        }
+
+        public boolean isBid() {
+            return isBid;
+        }
+
+        public void setBid(boolean bid) {
+            isBid = bid;
+        }
+
+        @Override
+        public void reset() {
+            orderId =0;
+            price =0;
+            quantity=0;
+            isBid = false;
         }
     }
 
