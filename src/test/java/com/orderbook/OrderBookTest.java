@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class OrderBookTest {
     private OrderBook orderBook;
 
-    private OrderBook.Order mutableNewOrder(long id, long price,  long notiona, boolean isBouy) {
+    private OrderBook.Order mutableNewOrder(long id, long price, long notiona, boolean isBouy) {
         final OrderBook.Order order = new OrderBook.Order(id, price, notiona, isBouy);
         return order;
     }

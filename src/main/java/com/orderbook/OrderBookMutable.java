@@ -1,35 +1,40 @@
 package com.orderbook;
 
-import org.agrona.collections.*;
+import com.pool.FixedObjectPool;
+import com.pool.Mutable;
+import org.agrona.collections.IntArrayList;
+import org.agrona.collections.Long2ObjectHashMap;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
-public class OrderBook {
+public class OrderBookMutable {
     private static final int MAX_LEVELS = 20000;
     private static final int MISSING_VAL = -1;
     private final int MAX_PRICE_ARRAY = 10_000;
 
-    private final List<PriceLevel> priceToBids = new ArrayList<>(MAX_PRICE_ARRAY);
-    private final List<PriceLevel> priceToOffers  = new ArrayList<>(MAX_PRICE_ARRAY);
+    private final List<MutablePriceLevel> priceToBids = new ArrayList<>(MAX_PRICE_ARRAY);
+    private final List<MutablePriceLevel> priceToOffers  = new ArrayList<>(MAX_PRICE_ARRAY);
 
     private final IntArrayList priceToIndexBids = new IntArrayList (MAX_PRICE_ARRAY, MISSING_VAL);
     private final IntArrayList priceToIndexOffers= new IntArrayList  (MAX_PRICE_ARRAY, MISSING_VAL);
 
-    private final PriceLevel [] bids = new PriceLevel[MAX_LEVELS];
-    private final PriceLevel [] offers = new PriceLevel[MAX_LEVELS];
+    private final MutablePriceLevel [] bids = new MutablePriceLevel[MAX_LEVELS];
+    private final MutablePriceLevel [] offers = new MutablePriceLevel[MAX_LEVELS];
 
     private int bidsSize = 0;
     private int offersSize = 0;
+    private final FixedObjectPool<MutablePriceLevel> fixedObjectPool;
 
-    public OrderBook() {
+    public OrderBookMutable() {
         for (int i = 0; i < MAX_PRICE_ARRAY; i++) {
             priceToBids.add(null);
             priceToOffers.add(null);
             priceToIndexBids.add(MISSING_VAL);
             priceToIndexOffers.add(MISSING_VAL);
         }
+        this.fixedObjectPool = new FixedObjectPool<>(MAX_LEVELS * 2, MutablePriceLevel::new, MutablePriceLevel.class);
     }
 
     public void newOrder(Order order) {
@@ -43,13 +48,15 @@ public class OrderBook {
 
     private void newBid(Order order) {
         if(priceToBids.get((int) order.price) != null) {
-            PriceLevel level = priceToBids.get((int) order.price);
+            MutablePriceLevel level = priceToBids.get((int) order.price);
             level.addOrder(order);
         } else {
             //otherwise find insertion point log (N) binary search
             //shift rest of array
             int insertionPoint = findInsertionPoint(bids, true, order.price);
-            PriceLevel level = new PriceLevel(order.price);
+            MutablePriceLevel level = fixedObjectPool.borrow();
+
+            level.setPrice(order.price);
             level.addOrder(order);
             addNewLevel(bids, insertionPoint, bidsSize, level, true);
             priceToBids.set((int) order.price, level);
@@ -59,11 +66,12 @@ public class OrderBook {
 
     private void newOffer(Order order) {
         if(priceToOffers.get((int) order.price) != null) {
-            PriceLevel level = priceToOffers.get((int) order.price);
+            MutablePriceLevel level = priceToOffers.get((int) order.price);
             level.addOrder(order);
         } else {
             int insertionPoint = findInsertionPoint(offers, false, order.price);
-            PriceLevel level = new PriceLevel(order.price);
+            MutablePriceLevel level = fixedObjectPool.borrow();
+            level.setPrice(order.price);
             level.addOrder(order);
             addNewLevel(offers, insertionPoint, offersSize, level, false);
             priceToOffers.set((int) order.price, level);
@@ -72,14 +80,14 @@ public class OrderBook {
     }
 
 
-    private int findInsertionPoint(PriceLevel[] levels, boolean isBid, long price) {
+    private int findInsertionPoint(MutablePriceLevel[] levels, boolean isBid, long price) {
         // Binary search
         int left = 0;
         int right = (isBid ? bidsSize : offersSize) - 1;
 
         while (left <= right) {
             int mid = (left + right) >>> 1;
-            long midPrice = levels[mid].price;
+            long midPrice = levels[mid].getPrice();
 
             if (midPrice == price) {
                 return mid; // Exact match found
@@ -94,11 +102,11 @@ public class OrderBook {
         return left;
     }
 
-    private void addNewLevel(PriceLevel[] levels, int index, int length, PriceLevel newLevel, boolean isBid) {
+    private void addNewLevel(MutablePriceLevel[] levels, int index, int length, MutablePriceLevel newLevel, boolean isBid) {
         // Shift array elements to the right and update index mappings in a single loop
         for (int i = length; i > index; i--) {
             levels[i] = levels[i - 1]; // Shift element to the right
-            long priceMove = levels[i].price; // Get the price of the shifted element
+            long priceMove = levels[i].getPrice(); // Get the price of the shifted element
             if (isBid) {
                 priceToIndexBids.set((int) priceMove, i); // Update the index in bids map
             } else {
@@ -108,17 +116,19 @@ public class OrderBook {
         // Insert the new price level and update the index
         levels[index] = newLevel;
         if (isBid) {
-            priceToIndexBids.set((int) newLevel.price, index);
+            priceToIndexBids.set((int) newLevel.getPrice(), index);
         } else {
-            priceToIndexOffers.set((int) newLevel.price, index);
+            priceToIndexOffers.set((int) newLevel.getPrice(), index);
         }
     }
 
-    private void removeLevel(PriceLevel[] levels, int index, int length, boolean isBid) {
+    private void removeLevel(MutablePriceLevel[] levels, int index, int length, boolean isBid) {
         // Shift elements to the left to fill the gap created by the removed level
+        MutablePriceLevel levelToRemove = levels[index];
+
         if (index < length - 1) {
             for (int i = index + 1; i < length; i++) {
-                long priceMove = levels[i].price;
+                long priceMove = levels[i].getPrice();
                 // Update the index mappings to reflect the new positions
                 if (isBid) {
                     priceToIndexBids.set((int) priceMove, i - 1);
@@ -129,7 +139,8 @@ public class OrderBook {
                 levels[i - 1] = levels[i];
             }
         }
-        // Nullify the last element, which has been moved left
+        // Nullify the last element, which has been moved left, release level to remove
+        fixedObjectPool.release(levelToRemove);
         levels[length - 1] = null;
     }
 
@@ -146,10 +157,10 @@ public class OrderBook {
     }
 
     private void cancelOffer(Order order) {
-        PriceLevel level = priceToOffers.get((int)order.price);
+        MutablePriceLevel level = priceToOffers.get((int)order.price);
         if(level != null) {
             level.removeOrder(order.orderId);
-            if(level.totalNotional <= 0) {
+            if(level.getTotalNotional() <= 0) {
                 priceToOffers.set((int) order.price, null);
                 int index = priceToIndexOffers.get((int)order.price);
                 removeLevel(offers, index, offersSize, order.isBid);
@@ -159,10 +170,10 @@ public class OrderBook {
         }
     }
     private void cancelBid(Order order) {
-        PriceLevel level = priceToBids.get((int)order.price);
+        MutablePriceLevel level = priceToBids.get((int)order.price);
         if(level != null) {
             level.removeOrder(order.orderId);
-            if(level.totalNotional <= 0) {
+            if(level.getTotalNotional() <= 0) {
                 priceToBids.set((int) order.price, null);
                 int index = priceToIndexBids.get((int)order.price);
                 removeLevel(bids, index, bidsSize, order.isBid);
@@ -178,28 +189,24 @@ public class OrderBook {
     }
 
 
-    private static class PriceLevel {
-        long price;
-        long totalNotional;
+    private static class MutablePriceLevel  implements Mutable {
+        private long price;
+        private long totalNotional;
 
-        private final Long2ObjectHashMap<Order> idToOrder = new Long2ObjectHashMap();
+        private final Long2ObjectHashMap<OrderBookMutable.Order> idToOrder = new Long2ObjectHashMap();
 
         //todo consider the complexity to remove, should jnot be deep
 //        private final LongArrayList idOrdering = new LongArrayList();
 
-        private PriceLevel(long price) {
-            this.price = price;
-        }
-
-        void addOrder(Order order) {
+        public void addOrder(OrderBookMutable.Order order) {
             assert order.price == price : "Price Must match";
 //            idOrdering.add(order.orderId);
             idToOrder.put(order.orderId, order);
             totalNotional += order.quantity;
         }
 
-        boolean removeOrder(long orderId) {
-            final Order order = idToOrder.remove(orderId);
+        public boolean removeOrder(long orderId) {
+            final OrderBookMutable.Order order = idToOrder.remove(orderId);
             if(order == null) {
                 return false;
             }
@@ -211,13 +218,30 @@ public class OrderBook {
         boolean isEmpty() {
             return idToOrder.isEmpty();
         }
-    }
 
+        public void setPrice(long price) {
+            this.price = price;
+        }
+
+        public long getPrice() {
+            return price;
+        }
+
+        public long getTotalNotional() {
+            return totalNotional;
+        }
+
+        public void reset() {
+            price = 0;
+            totalNotional = 0;
+            idToOrder.clear();
+        }
+    }
     public static class Order {
-        long orderId;
-        long price;
-        long quantity;
-        boolean isBid;
+        public long orderId;
+        public long price;
+        public long quantity;
+        public boolean isBid;
 
         Order(long orderId, long price, long quantity, boolean idBid) {
             this.orderId = orderId;
@@ -231,7 +255,7 @@ public class OrderBook {
         sb.append("Bids: [");
         for(int i =0; i < bidsSize; i++) {
             if (bids[i] != null) {
-                sb.append(bids[i].price).append(" ").append(bids[i].totalNotional).append(",");
+                sb.append(bids[i].getPrice()).append(" ").append(bids[i].getTotalNotional()).append(",");
             }
         }
         sb.deleteCharAt(sb.length() - 1);
@@ -239,7 +263,7 @@ public class OrderBook {
         sb.append(" Offers: [");
         for(int i =0; i < offersSize; i++) {
             if (offers[i] != null) {
-                sb.append(offers[i] .price).append(" ").append(offers[i].totalNotional).append(",");
+                sb.append(offers[i] .getPrice()).append(" ").append(offers[i].getTotalNotional()).append(",");
             }
         }
         sb.deleteCharAt(sb.length() - 1);
