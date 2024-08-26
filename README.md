@@ -2,15 +2,6 @@
 
 Array based - contiguous in memory. Insertion point binary search
 
-* Add at level O(1)
-* Add new level N log (N)
-* Cancel O(1)
-
-Improvements:
-
-* Make non allocating. Use a Mutable level object and Mutable orders
-* this can be zero GC but demonstrates the algorithms required to build an order book in array based fashion
-  =======
 1. Cache Efficiency:
 
    •	Contiguous Memory Layout: Arrays in Java are stored in contiguous blocks of memory, which means that accessing sequential elements is highly cache-friendly. This leads to fewer cache misses and faster data retrieval, which is crucial for low-latency operations.
@@ -69,7 +60,6 @@ The price-time priority matching algorithm is a method used in financial markets
     - The order book is continually updated to reflect the latest available orders and their priorities.
 
 This algorithm ensures that the most competitive orders are matched first while maintaining fairness by honoring the sequence of order submissions.
-
 
 ### Improvements and TODOS:
 
